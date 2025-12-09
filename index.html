@@ -332,8 +332,23 @@
             </div>
             
             <div class="actions">
+                <button class="action-btn" id="run-btn" style="background: #4CAF50;">Run Query</button>
                 <button class="action-btn" id="clear-btn">Clear All</button>
                 <button class="action-btn" id="copy-latex">Copy LaTeX</button>
+            </div>
+
+            <div class="results-container" style="width: 100%; max-width: 800px; margin-top: 20px;">
+                <h3 style="color: #333; margin-bottom: 10px;">Results:</h3>
+                <pre id="output-area" style="
+                    background: #2d2d2d; 
+                    color: #f8f8f2; 
+                    padding: 20px; 
+                    border-radius: 12px; 
+                    white-space: pre-wrap; 
+                    font-family: 'Consolas', monospace;
+                    min-height: 100px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                ">Results will appear here...</pre>
             </div>
         </div>
     </div>
@@ -474,6 +489,38 @@
                 navigator.clipboard.writeText(mathField.latex());
             }
         });
+
+        document.getElementById('run-btn').addEventListener('click', function() {
+        // 1. Get content from whichever mode is active (Visual or Raw)
+        const latexInput = document.getElementById('latex-input');
+        const query = !latexInput.classList.contains('hidden') ? latexInput.value : mathField.latex();
+        
+        const outputArea = document.getElementById('output-area');
+        outputArea.textContent = "Running...";
+        
+        // 2. Send to Python Server
+        fetch('http://localhost:5001/run', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ query: query })
+        })
+        .then(response => response.json())
+        .then(data => {
+            // 3. Display Result
+            if (data.status === 'success') {
+                outputArea.textContent = data.output;
+                outputArea.style.borderColor = '#4CAF50'; // Green border for success
+            } else {
+                outputArea.textContent = "Error:\n" + data.error;
+                outputArea.style.borderColor = '#ff4444'; // Red border for error
+            }
+        })
+        .catch(error => {
+            outputArea.textContent = "Connection Error: Is server.py running?\n" + error;
+        });
+    });
     </script>
 </body>
 </html>
