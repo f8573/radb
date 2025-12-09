@@ -3,14 +3,477 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Relational Algebra Mathpad</title>
-    <link rel="stylesheet" href="style.css">
+    <title>Mathematical Input Pad</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/mathquill/0.10.1/mathquill.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource/stix-two-math/400.css">
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: "Symbola", 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(45deg, #510C76, #8348AD);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }
+        
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+        
+        /* --- Layout & Width Control --- */
+        .math-editor-container {
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            max-width: 800px; /* Controls the width of all elements centrally */
+            margin: 0 auto;
+        }
+        
+        /* --- The Toggle Pill --- */
+        .input-toggle {
+            display: flex;
+            background: #f3f3f7;
+            border-radius: 50px; /* Fully rounded pill shape */
+            padding: 5px;
+            width: 100%;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 25px; /* Spacing between toggle and input box */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            color: #666;
+            border-radius: 40px; /* Round buttons inside pill */
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .toggle-btn.active {
+            background: #8348AD; /* Theme purple */
+            color: white;
+            box-shadow: 0 2px 8px rgba(131, 72, 173, 0.3);
+        }
+
+        .toggle-btn:hover:not(.active) {
+            background: rgba(0,0,0,0.05);
+            color: #333;
+        }
+        
+        /* --- Input Area Wrapper --- */
+        .input-wrapper {
+            width: 100%;
+            margin-bottom: 25px; /* Spacing between input and symbol pad */
+            position: relative;
+        }
+        
+        .math-input {
+            width: 100%;
+            min-height: 80px;
+            padding: 20px 25px;
+            font-size: 24px;
+            background: white;
+            border: 3px solid #e0e0e0;
+            border-radius: 20px; /* Fully rounded standalone box */
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+            cursor: text;
+        }
+        
+        /* Raw LaTeX Input Styling */
+        .raw-input {
+            width: 100%;
+            min-height: 80px;
+            padding: 25px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 18px;
+            border: 3px solid #e0e0e0;
+            border-radius: 20px; /* Fully rounded standalone box */
+            background: #fafafa;
+            resize: vertical;
+            outline: none;
+            color: #333;
+            transition: all 0.3s ease;
+        }
+        
+        .math-input:focus-within, .raw-input:focus {
+            border-color: #8348AD;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(131, 72, 173, 0.1);
+        }
+        
+        /* --- Symbol Pad --- */
+        .symbol-pad {
+            background: #f8f9fa;
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            width: 100%; /* Align with container width */
+            border: 1px solid #eee;
+        }
+        
+        .symbol-group {
+            margin-bottom: 20px;
+        }
+        
+        .symbol-group h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.1em;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .symbol-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr); 
+            grid-template-rows: repeat(4, 1fr);    
+            gap: 15px;
+            justify-items: center;
+        }
+        
+        .symbol-btn {
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: all 0.3s ease;
+            min-width: 60px;
+            min-height: 55px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+        
+        .symbol-btn:hover {
+            background: #B584E4;
+            color: white;
+            border-color: #B584E4;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 76, 174, 0.3);
+        }
+        
+        .symbol-btn:active {
+            transform: translateY(0);
+        }
+        
+        .symbol-btn sub {
+          font-size: 0.6em;
+          position: relative;
+          bottom: -0.2em;
+        }
+
+        .symbol-btn sup {
+          font-size: 0.6em;
+          position: relative;
+          bottom: 0.2em;
+        }
+
+        /* --- Actions --- */
+        .actions {
+            display: flex;
+            gap: 20px;
+            width: 100%;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .action-btn {
+            background: linear-gradient(45deg, #8348AD, #B584E4);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 14px 28px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(131, 72, 173, 0.2);
+        }
+        
+        .action-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(131, 72, 173, 0.4);
+        }
+        
+        /* --- Font Overrides --- */
+        .mq-root-block, .mq-math-mode .mq-root-block * {
+            font-family: 'STIX Two Math', serif !important;
+        }
+        
+        .mq-math-mode .mq-binary-operator {
+            font-size: 1em; 
+        }
+        
+        .icon {
+            font-family: "STIX Two Math", monospace;
+            font-weight: normal;
+        }
+        
+        /* Utility */
+        .hidden {
+            display: none !important;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                margin: 0;
+                border-radius: 0;
+            }
+            .math-editor-container {
+                padding: 20px;
+            }
+            .symbol-buttons {
+                grid-template-columns: repeat(3, 1fr); 
+                grid-template-rows: repeat(6, 1fr);    
+                gap: 8px;
+            }
+            .symbol-btn {
+                min-width: 50px;
+                min-height: 45px;
+                padding: 10px 12px;
+                font-size: 16px;
+            }
+        }
+    </style>
 </head>
 <body>
-    <h1>Relational Algebra Mathpad</h1>
-    <textarea id="expr" placeholder="Enter relational algebra expression"></textarea>
-    <button id="run">Run</button>
-    <pre id="output"></pre>
-    <script src="script.js"></script>
+    <div class="container">
+        <div class="header">
+            <h1>Relational Algebra Calculator</h1>
+            <p>Create relational algebra queries to be evaluated</p>
+        </div>
+        
+        <div class="math-editor-container">
+            <div class="input-toggle">
+                <button class="toggle-btn active" id="mode-pad" data-mode="pad">
+                    <span class="icon">π∪σ</span> Symbol Pad
+                </button>
+                <button class="toggle-btn" id="mode-latex" data-mode="latex">
+                    <span class="icon">{}</span> Raw LaTeX
+                </button>
+            </div>
+
+            <div class="input-wrapper">
+                <div id="math-field" class="math-input"></div>
+                <textarea id="latex-input" class="raw-input hidden" placeholder="Enter raw LaTeX here... (e.g. \pi_{name}(R))"></textarea>
+            </div>
+            
+            <div class="symbol-pad" id="symbol-pad-container">
+                <div class="symbol-group">
+                    <h3>Relational Algebra</h3>
+                    <div class="symbol-buttons">
+                        <button class="symbol-btn" data-latex="\pi_{}()">π<sub>☐</sub></button>
+                        <button class="symbol-btn" data-latex="\sigma_{}()">σ<sub>☐</sub></button>
+                        <button class="symbol-btn" data-latex="\rho_{}()">ρ<sub>☐</sub></button>
+                        <button class="symbol-btn" data-latex="\text" style="font-size: 14px; font-weight: bold;">Text</button>
+
+                        <button class="symbol-btn" data-latex="\gamma_{}()">γ<sub>☐</sub></button>
+                        <button class="symbol-btn" data-latex="{}_{} \gamma_{}()"><sub>☐</sub>γ<sub>☐</sub></button>
+                        <button class="symbol-btn" data-latex="\leftarrow">←</button>
+                        <button class="symbol-btn" data-latex="-">&minus;</button>
+
+                        <button class="symbol-btn" data-latex="\cup">∪</button>
+                        <button class="symbol-btn" data-latex="\cap">∩</button>
+                        <button class="symbol-btn" data-latex="\times">×</button>
+                        <button class="symbol-btn" data-latex="⋈">⋈</button>
+
+                        <button class="symbol-btn" data-latex="⋈_{}">⋈<sub>☐</sub></button>
+                        <button class="symbol-btn" data-latex="⟕">⟕</button>
+                        <button class="symbol-btn" data-latex="⟖">⟖</button>
+                        <button class="symbol-btn" data-latex="⟗">⟗</button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="actions">
+                <button class="action-btn" id="clear-btn">Clear All</button>
+                <button class="action-btn" id="copy-latex">Copy LaTeX</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize MathQuill
+        var MQ = MathQuill.getInterface(2);
+        var mathField = MQ.MathField(document.getElementById('math-field'), {
+            spaceBehavesLikeTab: true,
+            leftRightIntoCmdGoes: 'up',
+            restrictMismatchedBrackets: true,
+            sumStartsWithNEquals: true,
+            supSubsRequireOperand: true,
+            charsThatBreakOutOfSupSub: '+-=<>',
+            autoSubscriptNumerals: true,
+            autoCommands: 'pi theta sqrt sum prod alpha beta gamma delta epsilon zeta eta theta iota kappa lambda mu nu xi omicron rho sigma tau upsilon phi chi psi omega',
+            autoOperatorNames: 'sin cos tan sec csc cot sinh cosh tanh log ln exp lim sup inf max min gcd lcm mod',
+            handlers: {
+                edit: function() {
+                    // Optional: Auto-sync could go here
+                }
+            }
+        });
+
+        // Handle symbol button clicks
+        document.querySelectorAll('.symbol-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var latex = this.getAttribute('data-latex');
+
+                // Special handling
+                if (latex === '\\frac{a}{b}') {
+                    mathField.cmd('\\frac');
+                } else if (latex === '^{a}') {
+                    mathField.cmd('^');
+                } else if (latex === '_{a}') {
+                    mathField.cmd('_');
+                } else if (latex === '\\sqrt{a}') {
+                    mathField.cmd('\\sqrt');
+                } else if (latex === '\\sqrt[n]{a}') {
+                    mathField.cmd('\\nthroot');
+                } else if (latex === '\\left|\\right|') {
+                    mathField.write('\\left|\\right|');
+                    mathField.keystroke('Left Left');
+                } else if (latex === '\\sum') {
+                    mathField.cmd('\\sum');
+                } else if (latex === '\\int') {
+                    mathField.cmd('\\int');
+                } else if (latex === '\\lim') {
+                    mathField.cmd('\\lim');
+                } else if (latex === '\\text') {
+                    mathField.cmd('\\text');
+                } else {
+                    mathField.write(latex); 
+                }
+
+                mathField.focus();
+            });
+        });
+
+        // --- Toggle Logic ---
+        const modePadBtn = document.getElementById('mode-pad');
+        const modeLatexBtn = document.getElementById('mode-latex');
+        const mathFieldDiv = document.getElementById('math-field');
+        const latexInput = document.getElementById('latex-input');
+        const symbolPad = document.getElementById('symbol-pad-container');
+
+        function switchMode(mode) {
+            if (mode === 'pad') {
+                // Sync Data: Raw -> MathQuill
+                mathField.latex(latexInput.value);
+
+                // UI Updates
+                modePadBtn.classList.add('active');
+                modeLatexBtn.classList.remove('active');
+                
+                mathFieldDiv.classList.remove('hidden');
+                latexInput.classList.add('hidden');
+                symbolPad.classList.remove('hidden'); 
+                
+                mathField.focus();
+            } else {
+                // Sync Data: MathQuill -> Raw
+                latexInput.value = mathField.latex();
+
+                // UI Updates
+                modeLatexBtn.classList.add('active');
+                modePadBtn.classList.remove('active');
+                
+                latexInput.classList.remove('hidden');
+                mathFieldDiv.classList.add('hidden');
+                symbolPad.classList.add('hidden'); 
+                
+                latexInput.focus();
+            }
+        }
+
+        modePadBtn.addEventListener('click', () => switchMode('pad'));
+        modeLatexBtn.addEventListener('click', () => switchMode('latex'));
+
+        // Clear button
+        document.getElementById('clear-btn').addEventListener('click', function() {
+            mathField.latex('');
+            latexInput.value = '';
+            
+            if (!latexInput.classList.contains('hidden')) {
+                latexInput.focus();
+            } else {
+                mathField.focus();
+            }
+        });
+
+        // Copy LaTeX button
+        document.getElementById('copy-latex').addEventListener('click', function() {
+            var content = !latexInput.classList.contains('hidden') ? latexInput.value : mathField.latex();
+            
+            if (content) {
+                navigator.clipboard.writeText(content).then(function() {
+                    var btn = document.getElementById('copy-latex');
+                    var originalText = btn.textContent;
+                    btn.textContent = 'Copied!';
+                    btn.style.background = 'linear-gradient(45deg, #510C76, #8348AD)';
+                    setTimeout(function() {
+                        btn.textContent = originalText;
+                        btn.style.background = 'linear-gradient(45deg, #8348AD, #B584E4)';
+                    }, 2000);
+                });
+            }
+        });
+
+        mathField.focus();
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'a') {
+                e.preventDefault();
+                mathField.select();
+            } else if (e.ctrlKey && e.key === 'c' && mathField.latex()) {
+                navigator.clipboard.writeText(mathField.latex());
+            }
+        });
+    </script>
 </body>
 </html>
